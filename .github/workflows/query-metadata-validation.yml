@@ -1,0 +1,33 @@
+name: Query metadata runtime validation
+on:
+  push:
+    branches: [ci/query-metadata-validation-933]
+permissions:
+  contents: read
+jobs:
+  query-metadata:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        dapr: ["1.17.18", "1.18.9", "1.19.0"]
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: 640729652bd39b63d32e0b78dd922a1993141539
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "22.16.0"
+      - name: Record tested revision
+        run: git rev-parse HEAD
+      - name: Install dependencies
+        run: npm ci
+        env:
+          NPM_CONFIG_MIN_RELEASE_AGE: ""
+      - name: Build SDK
+        run: npm run build
+      - name: Query metadata integration tests
+        run: npm run test:e2e:state-query -- --coverage=false
+        env:
+          DAPR_RUNTIME_VERSION: ${{ matrix.dapr }}
