@@ -1,0 +1,39 @@
+name: PR933 review validation November 8
+on:
+  push:
+    branches: [ci/verify-pr933-20261108]
+permissions:
+  contents: read
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - label: baseline
+            ref: 7909a358744a19bf50f861a7b2752d59a5b2bd66
+          - label: pr-head
+            ref: acee99dcee6c50ae550c329a083034a5c271a935
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ matrix.ref }}
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "22.16.0"
+      - run: git rev-parse HEAD
+      - run: npm ci
+        env:
+          NPM_CONFIG_MIN_RELEASE_AGE: ""
+      - run: npm run build
+      - name: Reproduce streaming redelivery test
+        run: npx jest test/e2e/grpc/pubsub-stream-client.test.ts --runInBand --forceExit --coverage=false
+        env:
+          DAPR_RUNTIME_VERSION: "1.18.10"
+      - name: Validate query metadata on runtime 1.18.10
+        if: always() && matrix.label == 'pr-head'
+        run: npm run test:e2e:state-query -- --coverage=false
+        env:
+          DAPR_RUNTIME_VERSION: "1.18.10"
